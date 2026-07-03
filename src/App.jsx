@@ -1586,6 +1586,10 @@ function AdminPanel() {
                 </div>
               </div>
             </div>
+              <div style={{ borderTop: "1px solid #e0ddd8", paddingTop: 16, marginTop: 16 }}>
+                <div style={{ fontFamily: FONT_SANS, fontSize: 12, fontWeight: 500, color: COLORS.ink, marginBottom: 12 }}>Mensajes del cliente</div>
+                <MensajesCoach clienteId={selected.id} />
+              </div>
           )}
         </div>
         </>
