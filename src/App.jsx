@@ -17,7 +17,7 @@ const COLORS = {
   inkSoft: "#5C5850",
   olive: "#4A5D3A",
   oliveDeep: "#33401F",
-  oliveLight: "#E4E9DB",
+  oliveLight: "#E4E9DB", 
   terracotta: "#C97250",
   terracottaDeep: "#8F4A30",
   terracottaLight: "#F3E0D6",
@@ -1330,37 +1330,56 @@ function WhatsAppFloat({ message }) {
     </a>
   );
 }
+function MensajesCoach({ clienteId }) {
+  const [mensajes, setMensajes] = React.useState([]);
+  const [respuesta, setRespuesta] = React.useState("");
+  const [enviando, setEnviando] = React.useState(false);
+
+  React.useEffect(() => {
+    const cargar = async () => {
+      const { data } = await supabase.from("mensajes").select("*").eq("cliente_id", clienteId).order("created_at", { ascending: true });
+      setMensajes(data || []);
+    };
+    cargar();
+  }, [clienteId]);
+
+  const enviar = async () => {
+    if (!respuesta.trim()) return;
+    setEnviando(true);
+    await supabase.from("mensajes").insert({ cliente_id: clienteId, remitente: "coach", contenido: respuesta });
+    setRespuesta("");
+    const { data } = await supabase.from("mensajes").select("*").eq("cliente_id", clienteId).order("created_at", { ascending: true });
+    setMensajes(data || []);
+    setEnviando(false);
+  };
+
+  if (mensajes.length === 0) return <div style={{ fontFamily: FONT_SANS, fontSize: 13, color: COLORS.inkSoft }}>Sin mensajes todavia.</div>;
+
+  return (
+    <div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+        {mensajes.map((m) => (
+          <div key={m.id} style={{ display: "flex", justifyContent: m.remitente === "coach" ? "flex-end" : "flex-start" }}>
+            <div style={{ background: m.remitente === "coach" ? COLORS.olive : "white", color: m.remitente === "coach" ? COLORS.cream : COLORS.ink, borderRadius: 8, padding: "8px 12px", maxWidth: "80%", fontFamily: FONT_SANS, fontSize: 13 }}>
+              {m.contenido}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input value={respuesta} onChange={(e) => setRespuesta(e.target.value)} placeholder="Escribe tu respuesta..." style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "1px solid #e0ddd8", fontFamily: FONT_SANS, fontSize: 13 }} />
+        <button onClick={enviar} disabled={enviando} style={{ background: COLORS.olive, color: COLORS.cream, border: "none", borderRadius: 6, padding: "8px 16px", fontFamily: FONT_SANS, fontSize: 13, cursor: "pointer" }}>Enviar</button>
+      </div>
+    </div>
+  );
+}
+
 
 function AdminPanel() {
   const [clientes, setClientes] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
-  const [aplicaciones, setAplicaciones] = useState([]);
-  const [loadingAplicaciones, setLoadingAplicaciones] = useState(true);
-
-  const cargarAplicaciones = async () => {
-    setLoadingAplicaciones(true);
-    const { data } = await supabase.from("aplicaciones").select("*").eq("estado", "pendiente").order("created_at", { ascending: false });
-    setAplicaciones(data || []);
-    setLoadingAplicaciones(false);
-  };
-
-  const aceptarAplicacion = async (ap) => {
-    const { error } = await supabase.from("clientes").insert({
-      nombre: ap.nombre,
-      email: ap.email,
-      objetivo: ap.objetivo,
-      estado: "on-track",
-      semana_actual: 1,
-      total_semanas: 12,
-      notas: ""
-    });
-    if (!error) {
-      await supabase.from("aplicaciones").update({ estado: "aceptada" }).eq("id", ap.id);
-      cargarAplicaciones();
-    }
-  };
 
   const cerrarSesion = async () => {
     await supabase.auth.signOut();
@@ -1435,7 +1454,6 @@ function AdminPanel() {
     };
 
     cargarClientes();
-    cargarAplicaciones();
   }, []);
 
   const selected = clientes.find((c) => c.id === selectedId);
@@ -1483,22 +1501,6 @@ function AdminPanel() {
           </button>
         </h1>
 
-        {aplicaciones.length > 0 && (
-          <div style={{ marginBottom: 32 }}>
-            <h2 style={{ fontFamily: FONT_SERIF, fontSize: 20, color: COLORS.ink, marginBottom: 16, fontWeight: 500 }}>Solicitudes pendientes ({aplicaciones.length})</h2>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {aplicaciones.map((ap) => (
-                <div key={ap.id} style={{ background: "white", border: "1px solid #e0ddd8", borderRadius: 8, padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <div style={{ fontFamily: FONT_SERIF, fontSize: 16, color: COLORS.ink, marginBottom: 4 }}>{ap.nombre}</div>
-                    <div style={{ fontFamily: FONT_SANS, fontSize: 12, color: COLORS.inkSoft }}>{ap.email} — {ap.objetivo}</div>
-                  </div>
-                  <button onClick={() => aceptarAplicacion(ap)} style={{ background: COLORS.olive, color: COLORS.cream, border: "none", borderRadius: 6, padding: "10px 20px", fontFamily: FONT_SANS, fontSize: 13, cursor: "pointer" }}>Aceptar cliente</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
         {clientes.length === 0 ? (
           <div style={{ fontFamily: FONT_SANS, fontSize: 13.5, color: COLORS.inkSoft }}>
             Todavia no tienes clientes registrados. Cuando agregues uno en Supabase
