@@ -1351,16 +1351,19 @@ function MensajesCoach({ clienteId }) {
     setMensajes(data || []);
     setEnviando(false);
   };
-  if (mensajes.length === 0) return <div style={{ fontFamily: FONT_SANS, fontSize: 13, color: COLORS.inkSoft }}>Sin mensajes todavia.</div>;
   return (
     <div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
-        {mensajes.map((m) => (
-          <div key={m.id} style={{ display: "flex", justifyContent: m.remitente === "coach" ? "flex-end" : "flex-start" }}>
-            <div style={{ background: m.remitente === "coach" ? COLORS.olive : "white", color: m.remitente === "coach" ? COLORS.cream : COLORS.ink, borderRadius: 8, padding: "8px 12px", maxWidth: "80%", fontFamily: FONT_SANS, fontSize: 13 }}>{m.contenido}</div>
-          </div>
-        ))}
-      </div>
+      {mensajes.length === 0 ? (
+        <div style={{ fontFamily: FONT_SANS, fontSize: 13, color: COLORS.inkSoft, marginBottom: 12 }}>Sin mensajes todavia.</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+          {mensajes.map((m) => (
+            <div key={m.id} style={{ display: "flex", justifyContent: m.remitente === "coach" ? "flex-end" : "flex-start" }}>
+              <div style={{ background: m.remitente === "coach" ? COLORS.olive : "white", color: m.remitente === "coach" ? COLORS.cream : COLORS.ink, borderRadius: 8, padding: "8px 12px", maxWidth: "80%", fontFamily: FONT_SANS, fontSize: 13 }}>{m.contenido}</div>
+            </div>
+          ))}
+        </div>
+      )}
       <div style={{ display: "flex", gap: 8 }}>
         <input value={respuesta} onChange={(e) => setRespuesta(e.target.value)} placeholder="Escribe tu respuesta..." style={{ flex: 1, padding: "8px 12px", borderRadius: 6, border: "1px solid #e0ddd8", fontFamily: FONT_SANS, fontSize: 13 }} />
         <button onClick={enviar} disabled={enviando} style={{ background: COLORS.olive, color: COLORS.cream, border: "none", borderRadius: 6, padding: "8px 16px", fontFamily: FONT_SANS, fontSize: 13, cursor: "pointer" }}>Enviar</button>
@@ -1620,6 +1623,13 @@ function AdminPanel() {
                 <div style={{ fontFamily: FONT_SANS, fontSize: 13, color: COLORS.inkSoft, lineHeight: 1.6 }}>
                   {selected.notes}
                 </div>
+              </div>
+
+              <div style={{ borderTop: `1px solid ${COLORS.line}`, marginTop: 20, paddingTop: 16 }}>
+                <div style={{ fontFamily: FONT_SANS, fontSize: 12, fontWeight: 500, color: COLORS.ink, marginBottom: 8 }}>
+                  Mensajes
+                </div>
+                <MensajesCoach clienteId={selected.id} />
               </div>
             </div>
           )}
