@@ -1045,6 +1045,8 @@ function ClientPortal() {
   const [inCall, setInCall] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
+  const [newWeight, setNewWeight] = useState("");
+  const [savingWeight, setSavingWeight] = useState(false);
 
   useEffect(() => {
     const cargarDatos = async () => {
@@ -1152,6 +1154,22 @@ function ClientPortal() {
     }
   };
 
+  const guardarPeso = async () => {
+    const valor = parseFloat(newWeight);
+    if (!valor || valor <= 0 || !client) return;
+    setSavingWeight(true);
+    const today = new Date().toISOString().slice(0, 10);
+    const { error } = await supabase.from("registro_peso").insert({
+      cliente_id: client.id,
+      peso_kg: valor,
+      fecha: today,
+    });
+    if (!error) {
+      setClient((c) => ({ ...c, weight: [...c.weight, valor] }));
+      setNewWeight("");
+    }
+    setSavingWeight(false);
+  };
   if (loading) {
     return (
       <div style={{ background: COLORS.creamDeep, minHeight: "100%", padding: "60px 28px", textAlign: "center" }}>
@@ -1246,6 +1264,19 @@ function ClientPortal() {
             <WeightChart values={client.weight} />
             <div style={{ fontFamily: FONT_SANS, fontSize: 11.5, color: COLORS.inkSoft, marginTop: 8 }}>
               {client.weight[0]} kg &rarr; {client.weight[client.weight.length - 1]} kg
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+              <input
+                type="number"
+                step="0.1"
+                value={newWeight}
+                onChange={(e) => setNewWeight(e.target.value)}
+                placeholder="Tu peso hoy (kg)"
+                style={{ ...inputStyle, flex: 1 }}
+              />
+              <button onClick={guardarPeso} disabled={savingWeight} style={{ ...ghostBtn, padding: "8px 14px", fontSize: 12.5 }}>
+                {savingWeight ? "Guardando..." : "Guardar"}
+              </button>
             </div>
           </div>
         </div>
