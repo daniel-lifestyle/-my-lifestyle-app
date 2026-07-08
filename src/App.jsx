@@ -1292,25 +1292,9 @@ function ClientPortal() {
 
         <div style={{ background: "white", border: `1px solid ${COLORS.line}`, borderRadius: 6, padding: 22 }}>
           <div style={{ fontFamily: FONT_SANS, fontSize: 13, fontWeight: 500, color: COLORS.ink, marginBottom: 12 }}>
-            Enviar un mensaje a tu coach
+            Mensajes con tu coach
           </div>
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Como te fue esta semana, alguna duda..."
-            style={{ ...inputStyle, minHeight: 70, resize: "vertical", marginBottom: 10 }}
-          />
-          <button
-            onClick={enviarMensaje}
-            style={primaryBtn}
-          >
-            Enviar
-          </button>
-          {sentMsg && (
-            <div style={{ marginTop: 12, fontFamily: FONT_SANS, fontSize: 12, color: COLORS.olive }}>
-              Mensaje enviado. Tu coach te respondera en menos de 24 horas.
-            </div>
-          )}
+          <MensajesCliente clienteId={client.id} />
         </div>
 
         <div style={{ textAlign: "center", marginTop: 20 }}>
@@ -1362,6 +1346,52 @@ function WhatsAppFloat({ message }) {
   );
 }
 
+function MensajesCliente({ clienteId }) {
+  const [mensajes, setMensajes] = React.useState([]);
+  const [texto, setTexto] = React.useState("");
+  const [enviando, setEnviando] = React.useState(false);
+  React.useEffect(() => {
+    const cargar = async () => {
+      const { data } = await supabase.from("mensajes").select("*").eq("cliente_id", clienteId).order("created_at", { ascending: true });
+      setMensajes(data || []);
+      await supabase.from("mensajes").update({ leido: true }).eq("cliente_id", clienteId).eq("remitente", "coach").eq("leido", false);
+    };
+    cargar();
+  }, [clienteId]);
+  const enviar = async () => {
+    if (!texto.trim()) return;
+    setEnviando(true);
+    await supabase.from("mensajes").insert({ cliente_id: clienteId, remitente: "cliente", contenido: texto });
+    setTexto("");
+    const { data } = await supabase.from("mensajes").select("*").eq("cliente_id", clienteId).order("created_at", { ascending: true });
+    setMensajes(data || []);
+    setEnviando(false);
+  };
+  return (
+    <div>
+      {mensajes.length === 0 ? (
+        <div style={{ fontFamily: FONT_SANS, fontSize: 13, color: COLORS.inkSoft, marginBottom: 12 }}>Aun no hay mensajes. Escribele a tu coach cuando quieras.</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12, maxHeight: 300, overflowY: "auto" }}>
+          {mensajes.map((m) => (
+            <div key={m.id} style={{ display: "flex", justifyContent: m.remitente === "cliente" ? "flex-end" : "flex-start" }}>
+              <div style={{ background: m.remitente === "cliente" ? COLORS.olive : COLORS.creamDeep, color: m.remitente === "cliente" ? COLORS.cream : COLORS.ink, borderRadius: 8, padding: "8px 12px", maxWidth: "80%", fontFamily: FONT_SANS, fontSize: 13 }}>{m.contenido}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      <textarea
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        placeholder="Como te fue esta semana, alguna duda..."
+        style={{ ...inputStyle, minHeight: 70, resize: "vertical", marginBottom: 10 }}
+      />
+      <button onClick={enviar} disabled={enviando} style={primaryBtn}>
+        {enviando ? "Enviando..." : "Enviar"}
+      </button>
+    </div>
+  );
+}
 function MensajesCoach({ clienteId }) {
   const [mensajes, setMensajes] = React.useState([]);
   const [respuesta, setRespuesta] = React.useState("");
@@ -1485,6 +1515,12 @@ function AdminPanel() {
             .select("peso_kg")
             .eq("cliente_id", c.id)
             .order("fecha", { ascending: true });
+          const { count: unreadCount } = await supabase
+            .from("mensajes")
+            .select("id", { count: "exact", head: true })
+            .eq("cliente_id", c.id)
+            .eq("remitente", "cliente")
+            .eq("leido", false);
 
           return {
             id: c.id,
@@ -1497,6 +1533,7 @@ function AdminPanel() {
             notes: c.notas || "Sin notas todavia.",
             habits: habitosConRegistro,
             weight: (pesoData || []).map((p) => Number(p.peso_kg)),
+            unreadCount: unreadCount || 0,
           };
         })
       );
@@ -1596,7 +1633,12 @@ function AdminPanel() {
             {clientes.map((c) => (
               <button
                 key={c.id}
-                onClick={() => setSelectedId(c.id)}
+                onClick={() => {
+                  setSelectedId(c.id);
+                  supabase.from("mensajes").update({ leido: true }).eq("cliente_id", c.id).eq("remitente", "cliente").then(() => {
+                    setClientes((cs) => cs.map((cl) => (cl.id === c.id ? { ...cl, unreadCount: 0 } : cl)));
+                  });
+                }}
                 style={{
                   textAlign: "left",
                   background: c.id === selectedId ? "white" : "transparent",
@@ -1610,6 +1652,11 @@ function AdminPanel() {
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                   <StatusDot status={c.status} />
                   <span style={{ fontSize: 13.5, fontWeight: 500, color: COLORS.ink }}>{c.name}</span>
+                  {c.unreadCount > 0 && (
+                    <span style={{ background: COLORS.terracotta, color: "white", borderRadius: 10, fontSize: 10.5, padding: "1px 7px", fontFamily: FONT_SANS }}>
+                      {c.unreadCount}
+                    </span>
+                  )}
                 </div>
                 <div style={{ fontSize: 11.5, color: COLORS.inkSoft }}>
                   Semana {c.weekNumber} &middot; racha {c.streak}d
